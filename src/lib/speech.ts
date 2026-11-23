@@ -104,11 +104,16 @@ class SpeechService {
 
     if (platform === 'web') {
       if (!this.micSupported) {
-        console.error('Mic not supported or permission denied');
-        this.isListening = false;
-        this.isStoppedIntentionally = true;
-        this.onEndCallback?.();
-        return () => {};
+        // Retry the permission request — the browser re-prompts after a user
+        // gesture (e.g. the user tapping the mic again).
+        const granted = await this.requestPermission();
+        if (!granted) {
+          console.error('Mic not supported or permission denied');
+          this.isListening = false;
+          this.isStoppedIntentionally = true;
+          this.onEndCallback?.();
+          return () => {};
+        }
       }
       this.startWebRecognition();
     } else {

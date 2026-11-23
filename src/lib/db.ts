@@ -44,7 +44,8 @@ class Database {
   private async initWeb() {
     const initSqlJs = (await import('sql.js')).default;
     this.sqlJs = await initSqlJs({
-      locateFile: () => '/sql-wasm.wasm'
+      // Relative path so the wasm resolves under the Pages path (e.g. /VoiceKhata/)
+      locateFile: () => 'sql-wasm.wasm'
     });
     const saved = localStorage.getItem('voice_khata_db');
     if (saved) {
