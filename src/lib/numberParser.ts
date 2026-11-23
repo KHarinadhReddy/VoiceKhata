@@ -160,6 +160,14 @@ export function extractCustomerName(text: string, knownNames: string[]): string 
 
 export type Intent = 'credit' | 'payment' | 'query' | 'correction' | 'delete' | 'unknown';
 
+// Fuzzy credit-word detection: even a misheard/misspelled variant that starts with
+// "cre" (credit, cred, creaed, creadit) or contains "udhar"/"udtha" counts as credit,
+// so a stray word still creates a credit entry in the khata.
+function hasFuzzyCreditWord(text: string): boolean {
+  const words = normalizeHindiDigits(text).toLowerCase().split(/\s+/).filter(Boolean);
+  return words.some((w) => (/^cre|^kred/).test(w) || /udhar/.test(w) || /udtha/.test(w));
+}
+
 export function extractIntent(text: string): Intent {
   const lower = text.toLowerCase();
   
@@ -173,7 +181,7 @@ export function extractIntent(text: string): Intent {
   const latinPayment = /\b(liya|le|payment|paid|pay|received|collect|vapas|wapas|bhai|behen|lena|liye|lekar)\b/;
   const deletePattern = /\b(delete|remove|hatao|hata|chod|bhul|cancel|chhodo|hatao)\b/;
   
-  const isCredit = latinCredit.test(lower) || devaCredit.test(lower);
+  const isCredit = latinCredit.test(lower) || devaCredit.test(lower) || hasFuzzyCreditWord(lower);
   const isPayment = latinPayment.test(lower) || latinSettle.test(lower) || devaSettle.test(lower);
   
   if (deletePattern.test(lower) && !isQuestion) return 'delete';

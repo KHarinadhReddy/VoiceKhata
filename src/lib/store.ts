@@ -123,10 +123,15 @@ export const useStore = create<AppState>()(
         set({ isProcessing: true, transcript: text, error: null, statusPipeline: pipeline, pendingAction: null });
         try {
           const knownNames = get().customers.flatMap((c) => [c.name, ...c.aliases]);
-          const amountResult = extractAmount(text);
+          let amountResult = extractAmount(text);
           const customerName = extractCustomerName(text, knownNames);
           const intent = extractIntent(text);
           const date = extractDate(text);
+          if (!amountResult && intent === 'credit') {
+            // "Even if there is a word [credit], it has to credit too the khata":
+            // a credit word with no parseable amount still creates a credit entry.
+            amountResult = { amount: 1, confidence: 0.5, raw: 'credit-word only' };
+          }
 
           // Resolve customer
           let customer: Customer | null = null;
