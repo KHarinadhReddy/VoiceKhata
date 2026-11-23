@@ -90,7 +90,10 @@ export const useStore = create<AppState>()(
         speech.setLanguage('en-IN');
         const ok = await speech.init();
         if (!ok) {
-          set({ error: 'Microphone not available. Please check mic permission in browser settings and try again.' });
+          const retry = await speech.requestPermission();
+          if (!retry) {
+            set({ error: 'Microphone not available. Please check mic permission in browser settings and try again.' });
+          }
         }
       },
 
@@ -378,14 +381,22 @@ export const useStore = create<AppState>()(
               get().processTranscript(result.transcript, result.confidence);
             }
           },
-          () => {
-            set({ isListening: false });
-          }
+          () => set({ isListening: true }),
+          () => set({ isListening: false })
         );
         (window as any).__speechCleanup = cleanup;
-        // If mic failed to start, reset listening state so UI doesn't stay stuck
-        if (!speech.getIsListening()) {
-          set({ isListening: false, error: 'Microphone not ready. Please tap the mic again.' });
+        // Wait briefly for the browser to actually start recognizing (onstart),
+        // then verify — show the error if the mic never turns on.
+        let ready = false;
+        for (let i = 0; i < 20; i++) {
+          if (speech.getIsListening()) { ready = true; break; }
+          await new Promise((r) => setTimeout(r, 100));
+        }
+        if (!ready) {
+          set({
+            isListening: false,
+            error: 'Microphone not ready. Please tap the mic again — allow the microphone permission for Voice Khata and try again.'
+          });
         }
       },
 
